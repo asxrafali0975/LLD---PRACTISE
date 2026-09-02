@@ -15,6 +15,7 @@ class Car(Vehicle):
         self.type_of_vehicle = "medium"
         self.tyres = 4
         self.vehicle_number = vehicle_number
+        
 
     def type(self) -> str:
         return self.type_of_vehicle
@@ -47,6 +48,11 @@ class ParkingLot:
         self.large_area = {"Taken": {}, "NotTaken": {i for i in range(max_large)}}
         self.medium_area = {"Taken": {}, "NotTaken": {i for i in range(max_medium)}}
         self._lock = Lock()
+        self.hashdict = {
+                        "small": self.small_area,
+                        "medium": self.medium_area,
+                        "large": self.large_area,
+                    }
 
     def set_price(self, small_perhr: int, medium_perhr: int, large_perhr: int):
         self.parking_price = {
@@ -59,14 +65,8 @@ class ParkingLot:
         with self._lock:
             type_of_vehicle: str = vehicle.type()
 
-            hashdict = {
-                "small": self.small_area,
-                "medium": self.medium_area,
-                "large": self.large_area,
-            }
-
             # now we need to take out a area for this vehicle
-            which_area_occupy = hashdict[type_of_vehicle]
+            which_area_occupy = self.hashdict[type_of_vehicle]
 
             if len(which_area_occupy["NotTaken"]) == 0:
                 print("ALERT : Parking Lot is Full !!")
@@ -84,18 +84,15 @@ class ParkingLot:
             }
 
             which_area_occupy["Taken"][vehicle.vehicle_number] = data
+            print(f"{vehicle.vehicle_number} parked at parking area : {type_of_vehicle} at index : {area_not_taken}")
 
     def check_out(self, vehicle: Vehicle):
         with self._lock:
 
             type_of_vehicle: str = vehicle.type()
 
-            hashdict = {
-                "small": self.small_area,
-                "medium": self.medium_area,
-                "large": self.large_area,
-            }
-            which_area_occupy = hashdict[type_of_vehicle]
+            
+            which_area_occupy = self.hashdict[type_of_vehicle]
 
             # if parking lot is already empty we cant evict items...
             if len(which_area_occupy["Taken"]) == 0:
@@ -128,5 +125,12 @@ if __name__ == "__main__":
     Ash_Parkings = ParkingLot(10, 5, 2)
     Ash_Parkings.set_price(20, 50, 100)
     car1 = Car("9895")
+    car2 = Car("9805")
     bike1 = Bike("9476")
+    bike2 = Bike("9496")
+
+    Ash_Parkings.Entry(car1)
+    Ash_Parkings.Entry(car2)
+    Ash_Parkings.Entry(bike1)
+    Ash_Parkings.Entry(bike2)
     pass
