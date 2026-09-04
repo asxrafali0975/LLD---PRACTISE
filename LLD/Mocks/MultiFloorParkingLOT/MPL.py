@@ -56,17 +56,17 @@ class ParkingLot:
                 "medium_area": {"Taken": {}, "NotTaken": {i for i in range(md)}},
                 "large_area": {"Taken": {}, "NotTaken": {i for i in range(lr)}},
             }
+            self.each_floor_locks[f"floor_{i}"] = {}
 
             self.each_floor_locks[f"floor_{i}"]["small_area"] = Lock()
             self.each_floor_locks[f"floor_{i}"]["medium_area"] = Lock()
             self.each_floor_locks[f"floor_{i}"]["large_area"] = Lock()
-        
 
         self.hashdict = {
-                "small": "small_area",
-                "medium": "medium_area",
-                "large": "large_area",
-            }
+            "small": "small_area",
+            "medium": "medium_area",
+            "large": "large_area",
+        }
 
         # parking rates per hour
         self.parking_charges = {
@@ -77,103 +77,93 @@ class ParkingLot:
 
     def Entry(self, vehicle: Vehicle):
         vehicle_type = vehicle.type()  # small , medium , large
-        hash_dict_type = self.hashdict[vehicle_type] #"small_area" , "medium_area" , "large_area"
-        particular_lock = self.each_floor_locks.get(hash_dict_type)
-        with particular_lock:
-        
-            index = -1
-            floor = None
+        hash_dict_type = self.hashdict[
+            vehicle_type
+        ]  # "small_area" , "medium_area" , "large_area"
 
-            """
-        Checking if vehicle already exist in Lot
-            """
-
-            for key in self.all_floor_data:
-                parked_vehicle_data = self.all_floor_data[key][hash_dict_type]["Taken"].get(vehicle.vehicle_number)
-
+        for floor_keyy in self.all_floor_data:
+            with self.each_floor_locks[floor_keyy][hash_dict_type]:
+                parked_vehicle_data = self.all_floor_data[floor_keyy][hash_dict_type][
+                    "Taken"
+                ].get(vehicle.vehicle_number)
                 if parked_vehicle_data:
                     print("Error : Vehicle already exists in Parking LOT")
                     return
 
-            """
-        Checking for empty slots
-            """
+        for floor_key in self.all_floor_data:
+            with self.each_floor_locks[floor_key][hash_dict_type]:
 
-            for key in self.all_floor_data:
-                value = self.all_floor_data[key][hash_dict_type]["NotTaken"]
-                size =len(value)
+                for floor_keyy in self.all_floor_data:
+                    with self.each_floor_locks[floor_keyy][hash_dict_type]:
+                        parked_vehicle_data = self.all_floor_data[floor_keyy][
+                            hash_dict_type
+                        ]["Taken"].get(vehicle.vehicle_number)
+                        if parked_vehicle_data:
+                            print("Error : Vehicle already exists in Parking LOT")
+                            return
+                index = -1
+                floor = None
+
+                value = self.all_floor_data[floor_key][hash_dict_type]["NotTaken"]
+                size = len(value)
                 if size:
                     index = value.pop()
-                    floor = key
-                    break
+                    floor = floor_key
 
-            if index==-1 and floor==None:
-                print("Parking LOT is FULL !! Sorry 😥")
-                return 
+                if index == -1 and floor == None:
 
-            """
-        now am getting 2 important things keyy ( which floor )
-        and index ...
-        so now my goal would be to insert data in that particular floor and index
-            """
+                    continue
 
-            data = {
-            "entry_time": time.time(),
-            "vehicle": vehicle,
-            "floor" : floor,
-            "index": index
-            }
+                data = {
+                    "entry_time": time.time(),
+                    "vehicle": vehicle,
+                    "floor": floor,
+                    "index": index,
+                }
 
-        
+                self.all_floor_data[floor][hash_dict_type]["Taken"][
+                    vehicle.vehicle_number
+                ] = data
 
-            self.all_floor_data[floor][hash_dict_type]["Taken"][vehicle.vehicle_number] = data
-
-            print(f"vehicle parked successfully at floor {floor} and at label {index}")
-        
-                
-    def Exit(self , vehicle: Vehicle):
-        vehicle_type = vehicle.type() 
-        hash_dict_type = self.hashdict[vehicle_type]
-        particular_lock = self.each_floor_locks.get(hash_dict_type)
-        with particular_lock:
-
-            """
-        first i need to check if  vehicle is parked or not then usko evict karna hai bas
-            """
-
-            parked_vehicle_data = None
-            floor = None
-
-            for key in self.all_floor_data:
-                parked_vehicle_data = self.all_floor_data[key][hash_dict_type]["Taken"].get(vehicle.vehicle_number)
-                if parked_vehicle_data:
-                    floor = key
-
-            if parked_vehicle_data is None:
-                print("Error Vehicle not found in parking lot")
+                print(
+                    f"vehicle parked successfully at floor {floor} and at label {index}"
+                )
                 return
+        print("Parking LOT is FULL !! Sorry 😥")
 
+    def Exit(self, vehicle: Vehicle):
+        vehicle_type = vehicle.type()
+        hash_dict_type = self.hashdict[vehicle_type]
 
+        for floor_key in self.all_floor_data:
+            with self.each_floor_locks[floor_key][hash_dict_type]:
+                parked_vehicle_data = None
+                floor = None
 
-            data = parked_vehicle_data
-            parking_price =self.parking_charges[vehicle_type]
-            current_time = time.time()
-            total_hours =(current_time - data["entry_time"])/3600
-            total_price = math.ceil(total_hours) * parking_price
-            print(f"total cost is : {total_price}")
+                parked_vehicle_data = self.all_floor_data[floor_key][hash_dict_type][
+                    "Taken"
+                ].get(vehicle.vehicle_number)
+                if parked_vehicle_data:
+                    floor = floor_key
 
-            """ 
-        Now empty the taken
-        
-            """
-            self.all_floor_data[floor][hash_dict_type]["NotTaken"].add(data["index"])
-            del self.all_floor_data[floor][hash_dict_type]["Taken"][vehicle.vehicle_number]
+                if parked_vehicle_data is None:
+                    continue
 
+                data = parked_vehicle_data
+                parking_price = self.parking_charges[vehicle_type]
+                current_time = time.time()
+                total_hours = (current_time - data["entry_time"]) / 3600
+                total_price = math.ceil(total_hours) * parking_price
+                print(f"total cost is : {total_price}")
 
-
-
-        
-
+                self.all_floor_data[floor][hash_dict_type]["NotTaken"].add(
+                    data["index"]
+                )
+                del self.all_floor_data[floor][hash_dict_type]["Taken"][
+                    vehicle.vehicle_number
+                ]
+                return
+        print("Error Vehicle not found in parking lot")
 
 
 if __name__ == "__main__":
@@ -183,5 +173,5 @@ if __name__ == "__main__":
     Pl.Entry(b1)
     Pl.Exit(b1)
     Pl.Exit(b1)
-    
+
     pass
