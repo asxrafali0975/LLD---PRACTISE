@@ -15,7 +15,6 @@ class Car(Vehicle):
         self.type_of_vehicle = "medium"
         self.tyres = 4
         self.vehicle_number = vehicle_number
-        
 
     def type(self) -> str:
         return self.type_of_vehicle
@@ -45,14 +44,14 @@ class ParkingLot:
 
     def __init__(self, max_small: int, max_medium: int, max_large: int) -> None:
         self.small_area = {"Taken": {}, "NotTaken": {i for i in range(max_small)}}
-        self.large_area = {"Taken": {}, "NotTaken": {i for i in range(max_large)}}
         self.medium_area = {"Taken": {}, "NotTaken": {i for i in range(max_medium)}}
-        self._lock = Lock()
+        self.large_area = {"Taken": {}, "NotTaken": {i for i in range(max_large)}}
+        self.locks = {"small": Lock(), "medium": Lock(), "large": Lock()}
         self.hashdict = {
-                        "small": self.small_area,
-                        "medium": self.medium_area,
-                        "large": self.large_area,
-                    }
+            "small": self.small_area,
+            "medium": self.medium_area,
+            "large": self.large_area,
+        }
 
     def set_price(self, small_perhr: int, medium_perhr: int, large_perhr: int):
         self.parking_price = {
@@ -62,10 +61,9 @@ class ParkingLot:
         }
 
     def Entry(self, vehicle: Vehicle):
-        with self._lock:
-            type_of_vehicle: str = vehicle.type()
-
-            # now we need to take out a area for this vehicle
+        type_of_vehicle: str = vehicle.type()  # small , medium ,large
+        particular_lock = self.locks[type_of_vehicle]
+        with particular_lock:
             which_area_occupy = self.hashdict[type_of_vehicle]
 
             if len(which_area_occupy["NotTaken"]) == 0:
@@ -84,14 +82,15 @@ class ParkingLot:
             }
 
             which_area_occupy["Taken"][vehicle.vehicle_number] = data
-            print(f"{vehicle.vehicle_number} parked at parking area : {type_of_vehicle} at index : {area_not_taken}")
+            print(
+                f"{vehicle.vehicle_number} parked at parking area : {type_of_vehicle} at index : {area_not_taken}"
+            )
 
     def check_out(self, vehicle: Vehicle):
-        with self._lock:
+        type_of_vehicle: str = vehicle.type()  # small , medium ,large
+        particular_lock = self.locks[type_of_vehicle]
+        with particular_lock:
 
-            type_of_vehicle: str = vehicle.type()
-
-            
             which_area_occupy = self.hashdict[type_of_vehicle]
 
             # if parking lot is already empty we cant evict items...
